@@ -1,0 +1,99 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Book an Appointment</title>
+    <link rel="stylesheet" href="{% static 'google_calendar/booking_template.css' %}">
+</head>
+<body>
+    <div class="booking-container">
+        <h1>Book an Appointment</h1>
+        
+        <div class="booking-steps">
+            <div class="step-container duration-selector">
+                <h2><span class="step-number">1</span> Select Session Duration</h2>
+                <div class="duration-options">
+                    {% for duration in session_durations %}
+                    <div class="duration-option" data-duration="{{ duration.value }}">
+                        {{ duration.display }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="step-container date-selector">
+                <h2><span class="step-number">2</span> Choose Date & Time</h2>
+                
+                <div class="date-tabs">
+                    {% for slot in free_slots %}
+                    <div class="date-tab" data-date="{{ slot.start }}" data-duration="{{ slot.duration_minutes }}">
+                        {{ slot.display }}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="time-slots-container">
+                    {% for slot in free_slots %}
+                    <div class="time-slots" data-date="{{ slot.start }}">
+                        <div class="time-grid">
+                            {% for time in slot.available_times %}
+                            <div class="time-slot" data-time="{{ time.value }}">
+                                {{ time.display }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div id="booking-form" class="step-container booking-form">
+                <h2><span class="step-number">3</span> Complete Booking</h2>
+                <div class="selected-slot-info">
+                    <div class="info-item">
+                        <span class="info-label">Date:</span>
+                        <span id="selected-slot-display">Not selected</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Time:</span>
+                        <span id="selected-time-display">Not selected</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Duration:</span>
+                        <span id="selected-duration-display">Not selected</span>
+                    </div>
+                </div>
+
+                <form id="appointment-form">
+                    {% csrf_token %}
+                    <input type="hidden" id="start_date" name="start_date">
+                    <input type="hidden" id="start_time" name="start_time">
+                    <input type="hidden" id="session_duration" name="session_duration">
+                    
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">Additional Notes</label>
+                        <textarea id="description" name="description" rows="4" 
+                                placeholder="Please provide any additional information or specific topics you'd like to discuss..."></textarea>
+                    </div>
+                    
+                    <button type="submit" id="submit-button">Book Appointment</button>
+                </form>
+                <div id="message" class="message"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{% static 'google_calendar/booking_template.js' %}"></script>
+</body>
+</html>
