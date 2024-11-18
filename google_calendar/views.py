@@ -12,7 +12,6 @@ from googleapiclient.errors import HttpError
 
 load_dotenv()
 
-print(os.getenv("CALENDAR_ID"))
 
 SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE")
 SCOPES = [os.getenv("SCOPES")]
