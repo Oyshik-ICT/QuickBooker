@@ -1,23 +1,23 @@
-from django.shortcuts import render
+import datetime
+import os
+
+import pytz
 from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+from dotenv import load_dotenv
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-import datetime
-import pytz
-from django.views.decorators.csrf import csrf_exempt
 from googleapiclient.errors import HttpError
-import os
-from dotenv import load_dotenv
 
 load_dotenv()
 
-print(os.getenv('CALENDAR_ID'))
+print(os.getenv("CALENDAR_ID"))
 
-SERVICE_ACCOUNT_FILE = os.getenv('SERVICE_ACCOUNT_FILE')
-SCOPES = [os.getenv('SCOPES')]
+SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE")
+SCOPES = [os.getenv("SCOPES")]
 LOCAL_TIMEZONE = pytz.timezone(os.getenv("LOCAL_TIMEZONE"))
-CALENDAR_ID = os.getenv('CALENDAR_ID')
-
+CALENDAR_ID = os.getenv("CALENDAR_ID")
 
 
 SESSION_DURATIONS = [

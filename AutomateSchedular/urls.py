@@ -20,6 +20,6 @@ from google_calendar import views as google_calender_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('events/', google_calender_views.google_calendar_events, name='calendar-events'),
+    path('', google_calender_views.google_calendar_events, name='calendar-events'),
     path('book-appointment/', google_calender_views.book_appointment, name='book_appointment'),
 ]
