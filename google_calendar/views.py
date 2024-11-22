@@ -153,137 +153,164 @@ AVAILABILITY = {
 # Helper functions
 def get_calendar_service():
     """Create and return Google Calendar service"""
-    creds = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE,
-        scopes=SCOPES,
-    )
-    return build("calendar", "v3", credentials=creds)
+    try:
+        creds = service_account.Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE,
+            scopes=SCOPES,
+        )
+        return build("calendar", "v3", credentials=creds)
+    except Exception as e:
+        print(f"An error occurred while creating the Google Calendar service: {e}")
 
 
 def format_time_slots(time_slots):
     """Format time slots for display"""
-    formatted_slots = []
-    for hour, minute in time_slots:
-        time = datetime.time(hour, minute)
-        formatted_slots.append(
-            {"value": f"{hour:02d}:{minute:02d}", "display": time.strftime("%I:%M %p")}
-        )
-    return formatted_slots
+    try:
+        formatted_slots = []
+        for hour, minute in time_slots:
+            time = datetime.time(hour, minute)
+            formatted_slots.append(
+                {
+                    "value": f"{hour:02d}:{minute:02d}",
+                    "display": time.strftime("%I:%M %p"),
+                }
+            )
+        return formatted_slots
+    except Exception as e:
+        print(f"An error occurred while formatting time slots: {e}")
 
 
 def check_event_conflict(current_time, potential_end_time, events):
     """Check if a time slot conflicts with existing events"""
-    for event in events:
-        event_start = datetime.datetime.fromisoformat(
-            event["start"].get("dateTime")
-        ).astimezone(current_time.tzinfo)
-        event_end = datetime.datetime.fromisoformat(
-            event["end"].get("dateTime")
-        ).astimezone(current_time.tzinfo)
+    try:
+        for event in events:
+            event_start = datetime.datetime.fromisoformat(
+                event["start"].get("dateTime")
+            ).astimezone(current_time.tzinfo)
+            event_end = datetime.datetime.fromisoformat(
+                event["end"].get("dateTime")
+            ).astimezone(current_time.tzinfo)
 
-        if current_time < event_end and potential_end_time > event_start:
-            return True
-        if current_time < event_start and potential_end_time > event_start:
-            return True
-    return False
+            if current_time < event_end and potential_end_time > event_start:
+                return True
+            if current_time < event_start and potential_end_time > event_start:
+                return True
+        return False
+    except Exception as e:
+        print(f"An error occurred while checking event conflicts: {e}")
+        return False  # Assume no conflict if an error occurs
 
 
 def get_available_times(start_time, end_time, events):
     """Get available time slots within a given time range considering session duration"""
-    available_times = []
-    current_time = start_time
-    session_duration = int(getattr(get_available_times, "current_duration", 30))
+    try:
+        available_times = []
+        current_time = start_time
+        session_duration = int(getattr(get_available_times, "current_duration", 30))
 
-    while current_time < end_time:
-        hour = current_time.hour
-        minute = current_time.minute
+        while current_time < end_time:
+            hour = current_time.hour
+            minute = current_time.minute
 
-        if (hour, minute) in TIME_SLOTS:
-            potential_end_time = current_time + datetime.timedelta(
-                minutes=session_duration
-            )
-
-            is_available = True
-            if check_event_conflict(current_time, potential_end_time, events):
-                is_available = False
-
-            if potential_end_time > end_time:
-                is_available = False
-
-            if is_available:
-                available_times.append(
-                    {
-                        "value": f"{hour:02d}:{minute:02d}",
-                        "display": current_time.strftime("%I:%M %p"),
-                    }
+            if (hour, minute) in TIME_SLOTS:
+                potential_end_time = current_time + datetime.timedelta(
+                    minutes=session_duration
                 )
 
-        current_time += datetime.timedelta(minutes=30)
+                is_available = True
+                if check_event_conflict(current_time, potential_end_time, events):
+                    is_available = False
 
-    return available_times
+                if potential_end_time > end_time:
+                    is_available = False
+
+                if is_available:
+                    available_times.append(
+                        {
+                            "value": f"{hour:02d}:{minute:02d}",
+                            "display": current_time.strftime("%I:%M %p"),
+                        }
+                    )
+
+            current_time += datetime.timedelta(minutes=30)
+
+        return available_times
+    except Exception as e:
+        print(f"An error occurred while calculating available times: {e}")
+        return []  # Return an empty list if an error occurs
 
 
 def find_free_slots(events, availability, local_tz):
-    free_slots = []
-    now = datetime.datetime.now(local_tz)
-    today = now.date()
-    slots_by_date = {}
+    """Find free slots within the specified availability and events."""
+    try:
+        free_slots = []
+        now = datetime.datetime.now(local_tz)
+        today = now.date()
+        slots_by_date = {}
 
-    for day, time_range in availability.items():
-        if time_range:
-            day_date = today + datetime.timedelta(
-                days=(list(availability.keys()).index(day) - today.weekday()) % 7
-            )
-            start_hour, start_minute = time_range[0]
-            end_hour, end_minute = time_range[1]
-            start_time = local_tz.localize(
-                datetime.datetime.combine(
-                    day_date, datetime.time(start_hour, start_minute)
+        for day, time_range in availability.items():
+            if time_range:
+                day_date = today + datetime.timedelta(
+                    days=(list(availability.keys()).index(day) - today.weekday()) % 7
                 )
-            )
-            end_time = local_tz.localize(
-                datetime.datetime.combine(day_date, datetime.time(end_hour, end_minute))
-            )
-
-            if end_time < now:
-                continue
-
-            if start_time < now:
-                start_time = now.astimezone(local_tz).replace(
-                    minute=(now.minute // 15) * 15, second=0, microsecond=0
-                ) + datetime.timedelta(minutes=15)
-
-            day_events = [
-                event
-                for event in events
-                if datetime.datetime.fromisoformat(event["start"].get("dateTime"))
-                .astimezone(local_tz)
-                .date()
-                == day_date
-            ]
-
-            day_events.sort(
-                key=lambda x: datetime.datetime.fromisoformat(
-                    x["start"].get("dateTime")
+                start_hour, start_minute = time_range[0]
+                end_hour, end_minute = time_range[1]
+                start_time = local_tz.localize(
+                    datetime.datetime.combine(
+                        day_date, datetime.time(start_hour, start_minute)
+                    )
                 )
+                end_time = local_tz.localize(
+                    datetime.datetime.combine(
+                        day_date, datetime.time(end_hour, end_minute)
+                    )
+                )
+
+                if end_time < now:
+                    continue
+
+                if start_time < now:
+                    start_time = now.astimezone(local_tz).replace(
+                        minute=(now.minute // 15) * 15, second=0, microsecond=0
+                    ) + datetime.timedelta(minutes=15)
+
+                day_events = [
+                    event
+                    for event in events
+                    if datetime.datetime.fromisoformat(event["start"].get("dateTime"))
+                    .astimezone(local_tz)
+                    .date()
+                    == day_date
+                ]
+
+                day_events.sort(
+                    key=lambda x: datetime.datetime.fromisoformat(
+                        x["start"].get("dateTime")
+                    )
+                )
+
+                date_key = start_time.strftime("%Y-%m-%d")
+                if date_key not in slots_by_date:
+                    slots_by_date[date_key] = {
+                        "start": start_time,
+                        "end": end_time,
+                        "events": day_events,
+                    }
+
+        for date_key, slot_data in slots_by_date.items():
+            free_slots.append(
+                (slot_data["start"], slot_data["end"], slot_data["events"])
             )
 
-            date_key = start_time.strftime("%Y-%m-%d")
-            if date_key not in slots_by_date:
-                slots_by_date[date_key] = {
-                    "start": start_time,
-                    "end": end_time,
-                    "events": day_events,
-                }
-
-    for date_key, slot_data in slots_by_date.items():
-        free_slots.append((slot_data["start"], slot_data["end"], slot_data["events"]))
-
-    return sorted(free_slots, key=lambda x: x[0])
+        return sorted(free_slots, key=lambda x: x[0])
+    except Exception as e:
+        print(f"An error occurred while finding free slots: {e}")
+        return []
 
 
 # View functions
 def google_calendar_events(request):
+    """Fetch Google Calendar events and generate available booking slots."""
     try:
         service = get_calendar_service()
         now = datetime.datetime.now(LOCAL_TIMEZONE).isoformat()
@@ -331,6 +358,7 @@ def google_calendar_events(request):
 
 
 def book_appointment(request):
+    """Book an appointment by creating a new Google Calendar event."""
     if request.method == "POST":
         try:
             # Extract form data
